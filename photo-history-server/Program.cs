@@ -1,7 +1,9 @@
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.FileProviders;
 using Microsoft.IdentityModel.Tokens;
+using photo_history_server.Application.Photos;
 using photo_history_server.Application.Users;
 using photo_history_server.Infrastructure.Persistence;
 
@@ -48,14 +50,14 @@ builder.Services.AddCors(options =>
     {
         policy.WithOrigins("http://localhost:5173")
             .AllowAnyHeader()
-            .AllowAnyMethod()
-            .AllowCredentials();
+            .AllowAnyMethod();
     });
 });
 
 // Application services
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<SystemRegistrationService>();
+builder.Services.AddScoped<PhotoService>();
 
 var app = builder.Build();
 
@@ -69,13 +71,20 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+// Serve uploaded photos as static files under /uploads
+var photosPath = builder.Configuration["Storage:PhotosPath"]!;
+Directory.CreateDirectory(photosPath);
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(photosPath),
+    RequestPath = "/uploads"
+});
+
+app.UseCors("DevCors");
+
 app.UseAuthentication();
 app.UseAuthorization();
 
-if (app.Environment.IsDevelopment())
-{
-    app.UseCors("DevCors");
-}
 
 app.MapControllers();
 
