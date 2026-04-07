@@ -1,4 +1,5 @@
-﻿using System.Security.Claims;
+﻿using System.Globalization;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using photo_history_server.Application.Common.DTOs;
@@ -38,12 +39,25 @@ public class PhotosController : ControllerBase
         if (request.File.Length > maxSize)
             return BadRequest(new { Message = "File size must not exceed 10 MB." });
 
+        // Parse latitude and longitude using InvariantCulture to avoid decimal separator issues
+        if (!double.TryParse(request.Latitude, NumberStyles.Any,
+            CultureInfo.InvariantCulture, out var latitude))
+            return BadRequest(new { Message = "Invalid latitude value." });
+
+        if (!double.TryParse(request.Longitude, NumberStyles.Any,
+            CultureInfo.InvariantCulture, out var longitude))
+            return BadRequest(new { Message = "Invalid longitude value." });
+
         // Extract user id from JWT claims
         var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (userIdClaim is null || !Guid.TryParse(userIdClaim, out var userId))
             return Unauthorized(new { Message = "Invalid token." });
 
-        var result = await _photoService.UploadAsync(request, userId);
+        var parsed = new ParsedUploadPhotoRequest(
+            request.File, request.Description, request.TakenAt,
+            latitude, longitude, request.Address);
+
+        var result = await _photoService.UploadAsync(parsed, userId);
         return Created($"/uploads/{result.FileName}", result);
     }
 

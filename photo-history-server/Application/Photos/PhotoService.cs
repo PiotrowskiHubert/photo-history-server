@@ -22,7 +22,7 @@ public class PhotoService
     /// <summary>
     /// Save uploaded file to disk and create a Photo record in the database.
     /// </summary>
-    public async Task<PhotoResponse> UploadAsync(UploadPhotoRequest request, Guid userId)
+    public async Task<PhotoResponse> UploadAsync(ParsedUploadPhotoRequest request, Guid userId)
     {
         var storagePath = _config["Storage:PhotosPath"]!;
         Directory.CreateDirectory(storagePath);
