@@ -48,13 +48,28 @@ public class PhotosController : ControllerBase
             CultureInfo.InvariantCulture, out var longitude))
             return BadRequest(new { Message = "Invalid longitude value." });
 
+        // Parse TakenAt from ISO 8601 string
+        DateTime? takenAt = null;
+        if (!string.IsNullOrWhiteSpace(request.TakenAt))
+        {
+            if (DateTime.TryParse(request.TakenAt, null,
+                DateTimeStyles.RoundtripKind, out var parsedDate))
+            {
+                takenAt = parsedDate;
+            }
+            else
+            {
+                return BadRequest(new { Message = "Invalid takenAt date format. Use ISO 8601." });
+            }
+        }
+
         // Extract user id from JWT claims
         var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (userIdClaim is null || !Guid.TryParse(userIdClaim, out var userId))
             return Unauthorized(new { Message = "Invalid token." });
 
         var parsed = new ParsedUploadPhotoRequest(
-            request.File, request.Description, request.TakenAt,
+            request.File, request.Description, takenAt,
             latitude, longitude, request.Address);
 
         var result = await _photoService.UploadAsync(parsed, userId);

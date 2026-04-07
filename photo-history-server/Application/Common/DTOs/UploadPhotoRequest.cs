@@ -2,13 +2,13 @@
 
 /// <summary>
 /// Request model for photo upload. Plain class for multipart/form-data binding.
-/// Latitude/Longitude are strings to avoid culture-sensitive decimal separator issues.
+/// All nullable/numeric types are strings to avoid culture-sensitive parsing issues.
 /// </summary>
 public class UploadPhotoRequest
 {
     public IFormFile File { get; set; } = null!;
     public string? Description { get; set; }
-    public DateTime? TakenAt { get; set; }
+    public string? TakenAt { get; set; }      // ISO 8601 string, parsed manually
     public string Latitude { get; set; } = "0";
     public string Longitude { get; set; } = "0";
     public string? Address { get; set; }
