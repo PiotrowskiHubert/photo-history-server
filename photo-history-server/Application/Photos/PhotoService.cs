@@ -1,7 +1,11 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿// TODO: run migration: dotnet ef migrations add AddPhotoThumbnailName && dotnet ef database update
+using Microsoft.EntityFrameworkCore;
 using photo_history_server.Application.Common.DTOs;
 using photo_history_server.Domain.Entities;
 using photo_history_server.Infrastructure.Persistence;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Formats.Jpeg;
+using SixLabors.ImageSharp.Processing;
 
 namespace photo_history_server.Application.Photos;
 
@@ -38,10 +42,24 @@ public class PhotoService
             await request.File.CopyToAsync(stream);
         }
 
+        // Generate 300x300 JPEG thumbnail (preserve aspect ratio)
+        var thumbnailName = Path.GetFileNameWithoutExtension(fileName) + "_thumb.jpg";
+        var thumbnailPath = Path.Combine(storagePath, thumbnailName);
+        using (var image = await Image.LoadAsync(fullPath))
+        {
+            image.Mutate(x => x.Resize(new ResizeOptions
+            {
+                Size = new Size(300, 300),
+                Mode = ResizeMode.Max
+            }));
+            await image.SaveAsJpegAsync(thumbnailPath, new JpegEncoder { Quality = 80 });
+        }
+
         var photo = new Photo
         {
             FileName = fileName,
             FilePath = fullPath,
+            ThumbnailName = thumbnailName,
             OriginalName = request.File.FileName,
             Description = request.Description,
             TakenAt = request.TakenAt,
@@ -69,21 +87,32 @@ public class PhotoService
     }
 
     /// <summary>
-    /// Return lightweight marker data for photos within the given bounding box.
+    /// Return lightweight marker data for photos within the given bounding box,
+    /// optionally filtered by year range. Photos with null TakenAt are always included.
     /// </summary>
     public async Task<List<PhotoMarkerResponse>> GetInBoundsAsync(
-        double minLat, double maxLat, double minLng, double maxLng)
+        double minLat, double maxLat, double minLng, double maxLng,
+        int? fromYear, int? toYear)
     {
-        return await _db.Photos
+        var query = _db.Photos
             .Where(p =>
                 p.Latitude >= minLat && p.Latitude <= maxLat &&
-                p.Longitude >= minLng && p.Longitude <= maxLng)
+                p.Longitude >= minLng && p.Longitude <= maxLng);
+
+        if (fromYear.HasValue)
+            query = query.Where(p => p.TakenAt == null || p.TakenAt.Value.Year >= fromYear);
+
+        if (toYear.HasValue)
+            query = query.Where(p => p.TakenAt == null || p.TakenAt.Value.Year <= toYear);
+
+        return await query
             .OrderByDescending(p => p.UploadedAt)
             .Select(p => new PhotoMarkerResponse(
                 p.Id,
                 p.Latitude,
                 p.Longitude,
-                p.TakenAt))
+                p.TakenAt,
+                "/uploads/" + p.ThumbnailName))
             .ToListAsync();
     }
 

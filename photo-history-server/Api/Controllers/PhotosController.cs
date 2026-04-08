@@ -85,7 +85,9 @@ public class PhotosController : ControllerBase
         [FromQuery] string minLat,
         [FromQuery] string maxLat,
         [FromQuery] string minLng,
-        [FromQuery] string maxLng)
+        [FromQuery] string maxLng,
+        [FromQuery] string? fromYear,
+        [FromQuery] string? toYear)
     {
         // Parse all four bounds using InvariantCulture
         if (!double.TryParse(minLat, NumberStyles.Any, CultureInfo.InvariantCulture, out var parsedMinLat) ||
@@ -96,8 +98,27 @@ public class PhotosController : ControllerBase
             return BadRequest(new { Message = "Invalid bounding box parameters. Use invariant decimal format." });
         }
 
+        // Parse optional year-range filters
+        int? parsedFromYear = null;
+        int? parsedToYear = null;
+
+        if (!string.IsNullOrWhiteSpace(fromYear))
+        {
+            if (!int.TryParse(fromYear, out var fy))
+                return BadRequest(new { Message = "Invalid fromYear or toYear value." });
+            parsedFromYear = fy;
+        }
+
+        if (!string.IsNullOrWhiteSpace(toYear))
+        {
+            if (!int.TryParse(toYear, out var ty))
+                return BadRequest(new { Message = "Invalid fromYear or toYear value." });
+            parsedToYear = ty;
+        }
+
         var photos = await _photoService.GetInBoundsAsync(
-            parsedMinLat, parsedMaxLat, parsedMinLng, parsedMaxLng);
+            parsedMinLat, parsedMaxLat, parsedMinLng, parsedMaxLng,
+            parsedFromYear, parsedToYear);
         return Ok(photos);
     }
 

@@ -1,11 +1,12 @@
 ﻿namespace photo_history_server.Application.Common.DTOs;
 
 /// <summary>
-/// Lightweight response for map marker rendering — no image URL, no address.
+/// Lightweight response for map marker rendering — includes thumbnail URL for map pins.
 /// </summary>
 public record PhotoMarkerResponse(
     Guid Id,
     double Latitude,
     double Longitude,
-    DateTime? TakenAt);
+    DateTime? TakenAt,
+    string ThumbnailUrl);
 
