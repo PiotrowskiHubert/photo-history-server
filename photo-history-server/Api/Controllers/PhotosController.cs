@@ -77,14 +77,41 @@ public class PhotosController : ControllerBase
     }
 
     /// <summary>
-    /// Get all photos. Public endpoint.
+    /// Get photos within a bounding box as lightweight map markers. Public endpoint.
     /// </summary>
     [HttpGet]
     [AllowAnonymous]
-    public async Task<IActionResult> GetAll()
+    public async Task<IActionResult> GetAll(
+        [FromQuery] string minLat,
+        [FromQuery] string maxLat,
+        [FromQuery] string minLng,
+        [FromQuery] string maxLng)
     {
-        var photos = await _photoService.GetAllAsync();
+        // Parse all four bounds using InvariantCulture
+        if (!double.TryParse(minLat, NumberStyles.Any, CultureInfo.InvariantCulture, out var parsedMinLat) ||
+            !double.TryParse(maxLat, NumberStyles.Any, CultureInfo.InvariantCulture, out var parsedMaxLat) ||
+            !double.TryParse(minLng, NumberStyles.Any, CultureInfo.InvariantCulture, out var parsedMinLng) ||
+            !double.TryParse(maxLng, NumberStyles.Any, CultureInfo.InvariantCulture, out var parsedMaxLng))
+        {
+            return BadRequest(new { Message = "Invalid bounding box parameters. Use invariant decimal format." });
+        }
+
+        var photos = await _photoService.GetInBoundsAsync(
+            parsedMinLat, parsedMaxLat, parsedMinLng, parsedMaxLng);
         return Ok(photos);
+    }
+
+    /// <summary>
+    /// Get full photo details by ID. Public endpoint.
+    /// </summary>
+    [HttpGet("{id:guid}")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetById(Guid id)
+    {
+        var photo = await _photoService.GetByIdAsync(id);
+        if (photo is null)
+            return NotFound(new { Message = "Photo not found." });
+        return Ok(photo);
     }
 }
 

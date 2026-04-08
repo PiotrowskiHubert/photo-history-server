@@ -55,23 +55,7 @@ public class PhotoService
         _db.Photos.Add(photo);
         await _db.SaveChangesAsync();
 
-        return ToResponse(photo);
-    }
-
-    /// <summary>
-    /// Return all photos from the database.
-    /// </summary>
-    public async Task<List<PhotoResponse>> GetAllAsync()
-    {
-        var photos = await _db.Photos
-            .OrderByDescending(p => p.UploadedAt)
-            .ToListAsync();
-
-        return photos.Select(ToResponse).ToList();
-    }
-
-    private static PhotoResponse ToResponse(Photo photo) =>
-        new(
+        return new PhotoResponse(
             photo.Id,
             photo.FileName,
             "/uploads/" + photo.FileName,
@@ -82,5 +66,46 @@ public class PhotoService
             photo.Address,
             photo.UploadedAt,
             photo.UserId);
+    }
+
+    /// <summary>
+    /// Return lightweight marker data for photos within the given bounding box.
+    /// </summary>
+    public async Task<List<PhotoMarkerResponse>> GetInBoundsAsync(
+        double minLat, double maxLat, double minLng, double maxLng)
+    {
+        return await _db.Photos
+            .Where(p =>
+                p.Latitude >= minLat && p.Latitude <= maxLat &&
+                p.Longitude >= minLng && p.Longitude <= maxLng)
+            .OrderByDescending(p => p.UploadedAt)
+            .Select(p => new PhotoMarkerResponse(
+                p.Id,
+                p.Latitude,
+                p.Longitude,
+                p.TakenAt))
+            .ToListAsync();
+    }
+
+    /// <summary>
+    /// Return full photo details including uploader username.
+    /// Returns null if photo not found.
+    /// </summary>
+    public async Task<PhotoDetailResponse?> GetByIdAsync(Guid id)
+    {
+        var photo = await _db.Photos
+            .Include(p => p.User)
+            .FirstOrDefaultAsync(p => p.Id == id);
+
+        if (photo is null) return null;
+
+        return new PhotoDetailResponse(
+            photo.Id,
+            "/uploads/" + photo.FileName,
+            photo.Description,
+            photo.TakenAt,
+            photo.Address,
+            photo.User.Username);
+    }
 }
 
