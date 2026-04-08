@@ -134,5 +134,20 @@ public class PhotosController : ControllerBase
             return NotFound(new { Message = "Photo not found." });
         return Ok(photo);
     }
+
+    /// <summary>
+    /// Get all photos uploaded by the authenticated user, sorted by upload date descending.
+    /// </summary>
+    [HttpGet("my")]
+    [Authorize]
+    public async Task<IActionResult> GetMy()
+    {
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userIdClaim is null || !Guid.TryParse(userIdClaim, out var userId))
+            return Unauthorized(new { Message = "Invalid token." });
+
+        var photos = await _photoService.GetByUserAsync(userId);
+        return Ok(photos);
+    }
 }
 

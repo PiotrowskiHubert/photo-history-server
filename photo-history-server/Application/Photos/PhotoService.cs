@@ -136,5 +136,23 @@ public class PhotoService
             photo.Address,
             photo.User.Username);
     }
+
+    /// <summary>
+    /// Return all photos uploaded by a specific user, sorted by upload date descending.
+    /// </summary>
+    public async Task<List<UserPhotoResponse>> GetByUserAsync(Guid userId)
+    {
+        return await _db.Photos
+            .Where(p => p.UserId == userId)
+            .OrderByDescending(p => p.UploadedAt)
+            .Select(p => new UserPhotoResponse(
+                p.Id,
+                "/uploads/" + p.ThumbnailName,
+                p.Description,
+                p.TakenAt,
+                p.Address,
+                p.UploadedAt))
+            .ToListAsync();
+    }
 }
 
