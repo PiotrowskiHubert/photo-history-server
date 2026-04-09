@@ -9,5 +9,6 @@ public record PhotoDetailResponse(
     string? Description,
     DateTime? TakenAt,
     string? Address,
-    string UploaderUsername);
+    string UploaderUsername,
+    Guid UserId);
 

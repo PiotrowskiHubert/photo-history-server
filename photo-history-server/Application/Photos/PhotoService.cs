@@ -135,7 +135,8 @@ public class PhotoService
             photo.Description,
             photo.TakenAt,
             photo.Address,
-            photo.User.Username);
+            photo.User.Username,
+            photo.UserId);
     }
 
     /// <summary>
