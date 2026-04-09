@@ -1,4 +1,5 @@
 ﻿// TODO: run migration: dotnet ef migrations add AddPhotoThumbnailName && dotnet ef database update
+using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using photo_history_server.Application.Common.DTOs;
 using photo_history_server.Domain.Entities;
@@ -154,5 +155,90 @@ public class PhotoService
                 p.UploadedAt))
             .ToListAsync();
     }
-}
 
+    /// <summary>
+    /// Update photo metadata (description and/or takenAt). Only the owner can update.
+    /// </summary>
+    public async Task<bool> UpdateAsync(Guid id, Guid userId, UpdatePhotoRequest request)
+    {
+        var photo = await _db.Photos.FirstOrDefaultAsync(p => p.Id == id && p.UserId == userId);
+        if (photo is null) return false;
+
+        if (request.Description is not null)
+            photo.Description = request.Description;
+
+        if (request.TakenAt is not null)
+        {
+            if (DateTime.TryParse(request.TakenAt, null, DateTimeStyles.RoundtripKind, out var dt))
+                photo.TakenAt = dt;
+            else
+                photo.TakenAt = null;
+        }
+
+        await _db.SaveChangesAsync();
+        return true;
+    }
+
+    /// <summary>
+    /// Replace the photo file and regenerate thumbnail. Only the owner can replace.
+    /// </summary>
+    public async Task<bool> ReplaceImageAsync(Guid id, Guid userId, IFormFile file)
+    {
+        var photo = await _db.Photos.FirstOrDefaultAsync(p => p.Id == id && p.UserId == userId);
+        if (photo is null) return false;
+
+        var storagePath = _config["Storage:PhotosPath"]!;
+
+        // Delete old files if they exist
+        var oldPath = Path.Combine(storagePath, photo.FileName);
+        var oldThumb = Path.Combine(storagePath, photo.ThumbnailName);
+        if (File.Exists(oldPath)) File.Delete(oldPath);
+        if (File.Exists(oldThumb)) File.Delete(oldThumb);
+
+        // Save new file
+        var extension = Path.GetExtension(file.FileName);
+        var newFileName = Guid.NewGuid() + extension;
+        var newPath = Path.Combine(storagePath, newFileName);
+        await using (var stream = new FileStream(newPath, FileMode.Create))
+            await file.CopyToAsync(stream);
+
+        // Regenerate thumbnail
+        var newThumbName = Path.GetFileNameWithoutExtension(newFileName) + "_thumb.jpg";
+        var newThumbPath = Path.Combine(storagePath, newThumbName);
+        using (var image = await Image.LoadAsync(newPath))
+        {
+            image.Mutate(x => x.Resize(new ResizeOptions
+            {
+                Size = new Size(300, 300),
+                Mode = ResizeMode.Max
+            }));
+            await image.SaveAsJpegAsync(newThumbPath, new JpegEncoder { Quality = 80 });
+        }
+
+        photo.FileName = newFileName;
+        photo.FilePath = newPath;
+        photo.ThumbnailName = newThumbName;
+        photo.OriginalName = file.FileName;
+        await _db.SaveChangesAsync();
+        return true;
+    }
+
+    /// <summary>
+    /// Delete a photo and its thumbnail from disk and DB. Only the owner can delete.
+    /// </summary>
+    public async Task<bool> DeleteAsync(Guid id, Guid userId)
+    {
+        var photo = await _db.Photos.FirstOrDefaultAsync(p => p.Id == id && p.UserId == userId);
+        if (photo is null) return false;
+
+        var storagePath = _config["Storage:PhotosPath"]!;
+        var filePath = Path.Combine(storagePath, photo.FileName);
+        var thumbPath = Path.Combine(storagePath, photo.ThumbnailName);
+        if (File.Exists(filePath)) File.Delete(filePath);
+        if (File.Exists(thumbPath)) File.Delete(thumbPath);
+
+        _db.Photos.Remove(photo);
+        await _db.SaveChangesAsync();
+        return true;
+    }
+}

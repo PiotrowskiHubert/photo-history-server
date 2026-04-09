@@ -149,5 +149,56 @@ public class PhotosController : ControllerBase
         var photos = await _photoService.GetByUserAsync(userId);
         return Ok(photos);
     }
+
+    /// <summary>
+    /// Update photo metadata (description and/or takenAt). Only the owner can update.
+    /// </summary>
+    [HttpPatch("{id:guid}")]
+    [Authorize]
+    public async Task<IActionResult> Update(Guid id, [FromBody] UpdatePhotoRequest request)
+    {
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userIdClaim is null || !Guid.TryParse(userIdClaim, out var userId))
+            return Unauthorized(new { Message = "Invalid token." });
+
+        var ok = await _photoService.UpdateAsync(id, userId, request);
+        return ok ? NoContent() : NotFound(new { Message = "Photo not found or not yours." });
+    }
+
+    /// <summary>
+    /// Replace the photo file and regenerate thumbnail. Only the owner can replace.
+    /// </summary>
+    [HttpPut("{id:guid}/image")]
+    [Authorize]
+    [Consumes("multipart/form-data")]
+    public async Task<IActionResult> ReplaceImage(Guid id, IFormFile file)
+    {
+        if (file is null || file.Length == 0)
+            return BadRequest(new { Message = "File is required." });
+        if (!file.ContentType.StartsWith("image/"))
+            return BadRequest(new { Message = "Only image files are allowed." });
+
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userIdClaim is null || !Guid.TryParse(userIdClaim, out var userId))
+            return Unauthorized(new { Message = "Invalid token." });
+
+        var ok = await _photoService.ReplaceImageAsync(id, userId, file);
+        return ok ? NoContent() : NotFound(new { Message = "Photo not found or not yours." });
+    }
+
+    /// <summary>
+    /// Delete a photo and its thumbnail from disk and DB. Only the owner can delete.
+    /// </summary>
+    [HttpDelete("{id:guid}")]
+    [Authorize]
+    public async Task<IActionResult> Delete(Guid id)
+    {
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userIdClaim is null || !Guid.TryParse(userIdClaim, out var userId))
+            return Unauthorized(new { Message = "Invalid token." });
+
+        var ok = await _photoService.DeleteAsync(id, userId);
+        return ok ? NoContent() : NotFound(new { Message = "Photo not found or not yours." });
+    }
 }
 
