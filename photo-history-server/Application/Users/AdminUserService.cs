@@ -35,12 +35,13 @@ public class AdminUserService
     }
 
     /// <summary>
-    /// Returns all photos from all users sorted by UploadedAt descending.
+    /// Returns unreviewed photos from all users sorted by UploadedAt descending.
     /// </summary>
     public async Task<List<AdminPhotoResponse>> GetAllPhotosAsync()
     {
         return await _db.Photos
             .Include(p => p.User)
+            .Where(p => p.ReviewedAt == null)
             .OrderByDescending(p => p.UploadedAt)
             .Select(p => new AdminPhotoResponse(
                 p.Id,
@@ -50,7 +51,47 @@ public class AdminUserService
                 p.Address,
                 p.UploadedAt,
                 p.User.Username,
-                p.UserId))
+                p.UserId,
+                p.ReviewedAt,
+                p.ReviewedBy))
             .ToListAsync();
+    }
+
+    /// <summary>
+    /// Returns the count of photos awaiting review.
+    /// </summary>
+    public async Task<int> GetUnreviewedCountAsync()
+    {
+        return await _db.Photos.CountAsync(p => p.ReviewedAt == null);
+    }
+
+    /// <summary>
+    /// Marks a photo as reviewed by the given admin.
+    /// Returns false if photo not found.
+    /// </summary>
+    public async Task<bool> ReviewPhotoAsync(Guid photoId, Guid adminId)
+    {
+        var photo = await _db.Photos.FindAsync(photoId);
+        if (photo is null) return false;
+
+        photo.ReviewedAt = DateTime.UtcNow;
+        photo.ReviewedBy = adminId;
+        await _db.SaveChangesAsync();
+        return true;
+    }
+
+    /// <summary>
+    /// Clears the review status of a photo (moves it back to unreviewed queue).
+    /// Returns false if photo not found.
+    /// </summary>
+    public async Task<bool> UnreviewPhotoAsync(Guid photoId)
+    {
+        var photo = await _db.Photos.FindAsync(photoId);
+        if (photo is null) return false;
+
+        photo.ReviewedAt = null;
+        photo.ReviewedBy = null;
+        await _db.SaveChangesAsync();
+        return true;
     }
 }

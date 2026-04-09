@@ -8,5 +8,7 @@ public record AdminPhotoResponse(
     string? Address,
     DateTime UploadedAt,
     string UploaderUsername,
-    Guid UserId);
+    Guid UserId,
+    DateTime? ReviewedAt,
+    Guid? ReviewedBy);
 

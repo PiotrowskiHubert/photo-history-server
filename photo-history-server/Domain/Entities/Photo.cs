@@ -14,6 +14,12 @@ public class Photo
     public string? Address { get; set; }
     public DateTime UploadedAt { get; set; } = DateTime.UtcNow;
 
+    /// <summary>Timestamp when an admin approved this photo. Null = awaiting review.</summary>
+    public DateTime? ReviewedAt { get; set; }
+
+    /// <summary>ID of the admin who approved this photo. Null = not yet reviewed.</summary>
+    public Guid? ReviewedBy { get; set; }
+
     public Guid UserId { get; set; }
     public User User { get; set; } = null!;
 }
