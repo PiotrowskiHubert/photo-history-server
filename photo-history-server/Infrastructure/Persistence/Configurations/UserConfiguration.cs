@@ -34,6 +34,12 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.GoogleId).IsRequired(false);
         builder.Property(u => u.GitHubId).IsRequired(false);
         builder.Property(u => u.AvatarUrl).IsRequired(false);
+
+        // Account status – defaults so existing rows get correct values
+        builder.Property(u => u.IsActive)
+            .HasDefaultValue(true);
+        builder.Property(u => u.IsBanned)
+            .HasDefaultValue(false);
     }
 }
 

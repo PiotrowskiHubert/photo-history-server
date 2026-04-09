@@ -39,26 +39,36 @@ public class AuthService
         return new AuthResponse(token, user.Username, user.Email, user.Role.ToString(), user.AvatarUrl);
     }
     /// <summary>
-    /// Authenticate user with email and password.
-    /// Returns null if credentials are invalid.
+    /// Authenticate user with email/username and password.
+    /// Returns a LoginResult with status indicating success or failure reason.
     /// </summary>
-    public async Task<AuthResponse?> LoginAsync(LoginRequest request)
+    public async Task<LoginResult> LoginAsync(LoginRequest request)
     {
         // Allow login with either email or username (case-insensitive)
         var identifier = request.EmailOrUsername.Trim().ToLower();
         var user = await _db.Users.FirstOrDefaultAsync(u =>
             u.Email.ToLower() == identifier ||
             u.Username.ToLower() == identifier);
-        if (user is null || user.PasswordHash is null) return null;
+        if (user is null || user.PasswordHash is null)
+            return new LoginResult(null, LoginStatus.InvalidCredentials);
+
+        // Check account status before verifying password
+        if (user.IsBanned)
+            return new LoginResult(null, LoginStatus.Banned);
+        if (!user.IsActive)
+            return new LoginResult(null, LoginStatus.Inactive);
+
         bool valid = BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash);
-        if (!valid) return null;
+        if (!valid)
+            return new LoginResult(null, LoginStatus.InvalidCredentials);
 
         // Record last login time
         user.LastLoginAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
 
         var token = GenerateJwt(user);
-        return new AuthResponse(token, user.Username, user.Email, user.Role.ToString(), user.AvatarUrl);
+        var response = new AuthResponse(token, user.Username, user.Email, user.Role.ToString(), user.AvatarUrl);
+        return new LoginResult(response, LoginStatus.Success);
     }
 
     /// <summary>
@@ -98,3 +108,17 @@ public class AuthService
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 }
+
+/// <summary>
+/// Result of a login attempt with a discriminated status.
+/// </summary>
+public record LoginResult(AuthResponse? Response, LoginStatus Status);
+
+public enum LoginStatus
+{
+    Success,
+    InvalidCredentials,
+    Banned,
+    Inactive
+}
+

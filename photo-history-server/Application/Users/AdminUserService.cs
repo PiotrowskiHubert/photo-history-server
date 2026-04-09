@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using photo_history_server.Application.Common.DTOs;
+using photo_history_server.Domain.Enums;
 using photo_history_server.Infrastructure.Persistence;
 
 namespace photo_history_server.Application.Users;
@@ -10,10 +11,12 @@ namespace photo_history_server.Application.Users;
 public class AdminUserService
 {
     private readonly AppDbContext _db;
+    private readonly IConfiguration _config;
 
-    public AdminUserService(AppDbContext db)
+    public AdminUserService(AppDbContext db, IConfiguration config)
     {
         _db = db;
+        _config = config;
     }
 
     /// <summary>
@@ -30,7 +33,9 @@ public class AdminUserService
                 u.Role.ToString(),
                 u.CreatedAt,
                 u.LastLoginAt,
-                u.LastLogoutAt))
+                u.LastLogoutAt,
+                u.IsActive,
+                u.IsBanned))
             .ToListAsync();
     }
 
@@ -94,4 +99,62 @@ public class AdminUserService
         await _db.SaveChangesAsync();
         return true;
     }
+
+    /// <summary>
+    /// Bans a user. Cannot ban Admin or System users.
+    /// </summary>
+    public async Task<AdminActionResult> BanUserAsync(Guid userId)
+    {
+        var user = await _db.Users.FindAsync(userId);
+        if (user is null) return AdminActionResult.NotFound;
+        if (user.Role >= UserRole.Admin) return AdminActionResult.Forbidden;
+
+        user.IsBanned = true;
+        await _db.SaveChangesAsync();
+        return AdminActionResult.Success;
+    }
+
+    /// <summary>
+    /// Deactivates a user. Cannot deactivate Admin or System users.
+    /// </summary>
+    public async Task<AdminActionResult> DeactivateUserAsync(Guid userId)
+    {
+        var user = await _db.Users.FindAsync(userId);
+        if (user is null) return AdminActionResult.NotFound;
+        if (user.Role >= UserRole.Admin) return AdminActionResult.Forbidden;
+
+        user.IsActive = false;
+        await _db.SaveChangesAsync();
+        return AdminActionResult.Success;
+    }
+
+    /// <summary>
+    /// Deletes a photo and its files from disk (reject).
+    /// Returns false if photo not found.
+    /// </summary>
+    public async Task<bool> RejectPhotoAsync(Guid photoId)
+    {
+        var photo = await _db.Photos.FindAsync(photoId);
+        if (photo is null) return false;
+
+        var storagePath = _config["Storage:PhotosPath"]!;
+        var filePath = Path.Combine(storagePath, photo.FileName);
+        var thumbPath = Path.Combine(storagePath, photo.ThumbnailName);
+        if (File.Exists(filePath)) File.Delete(filePath);
+        if (File.Exists(thumbPath)) File.Delete(thumbPath);
+
+        _db.Photos.Remove(photo);
+        await _db.SaveChangesAsync();
+        return true;
+    }
+}
+
+/// <summary>
+/// Possible outcomes of an admin action on a user.
+/// </summary>
+public enum AdminActionResult
+{
+    Success,
+    NotFound,
+    Forbidden
 }

@@ -7,5 +7,7 @@ public record AdminUserResponse(
     string Role,
     DateTime CreatedAt,
     DateTime? LastLoginAt,
-    DateTime? LastLogoutAt);
+    DateTime? LastLogoutAt,
+    bool IsActive,
+    bool IsBanned);
 

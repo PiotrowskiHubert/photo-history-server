@@ -71,4 +71,44 @@ public class AdminController : ControllerBase
         var ok = await _adminUserService.UnreviewPhotoAsync(id);
         return ok ? NoContent() : NotFound(new { Message = "Photo not found." });
     }
+
+    /// <summary>
+    /// Ban a user. Cannot ban Admin or System users.
+    /// </summary>
+    [HttpPost("users/{id:guid}/ban")]
+    public async Task<IActionResult> BanUser(Guid id)
+    {
+        var result = await _adminUserService.BanUserAsync(id);
+        return result switch
+        {
+            AdminActionResult.Success => NoContent(),
+            AdminActionResult.Forbidden => StatusCode(403, new { Message = "Cannot ban Admin or System users." }),
+            _ => NotFound(new { Message = "User not found." })
+        };
+    }
+
+    /// <summary>
+    /// Deactivate a user. Cannot deactivate Admin or System users.
+    /// </summary>
+    [HttpPost("users/{id:guid}/deactivate")]
+    public async Task<IActionResult> DeactivateUser(Guid id)
+    {
+        var result = await _adminUserService.DeactivateUserAsync(id);
+        return result switch
+        {
+            AdminActionResult.Success => NoContent(),
+            AdminActionResult.Forbidden => StatusCode(403, new { Message = "Cannot deactivate Admin or System users." }),
+            _ => NotFound(new { Message = "User not found." })
+        };
+    }
+
+    /// <summary>
+    /// Delete (reject) a photo and its files from disk.
+    /// </summary>
+    [HttpDelete("photos/{id:guid}/reject")]
+    public async Task<IActionResult> RejectPhoto(Guid id)
+    {
+        var ok = await _adminUserService.RejectPhotoAsync(id);
+        return ok ? NoContent() : NotFound(new { Message = "Photo not found." });
+    }
 }

@@ -33,9 +33,13 @@ public class AuthController : ControllerBase
     public async Task<IActionResult> Login([FromBody] LoginRequest request)
     {
         var result = await _authService.LoginAsync(request);
-        if (result is null)
-            return Unauthorized(new { Message = "Invalid email or password." });
-        return Ok(result);
+        return result.Status switch
+        {
+            LoginStatus.Success => Ok(result.Response),
+            LoginStatus.Banned => StatusCode(403, new { Message = "Your account has been banned." }),
+            LoginStatus.Inactive => StatusCode(403, new { Message = "Your account is inactive." }),
+            _ => Unauthorized(new { Message = "Invalid email or password." })
+        };
     }
 
     [AllowAnonymous]
