@@ -25,9 +25,13 @@ public class AuthController : ControllerBase
     public async Task<IActionResult> Register([FromBody] RegisterRequest request)
     {
         var result = await _authService.RegisterAsync(request);
-        if (result is null)
-            return Conflict(new { Message = "Email is already taken." });
-        return Ok(result);
+        return result.Status switch
+        {
+            RegisterStatus.Success       => Ok(result.Response),
+            RegisterStatus.EmailTaken    => Conflict(new { Message = "Email is already in use.", Field = "email" }),
+            RegisterStatus.UsernameTaken => Conflict(new { Message = "Username is already taken.", Field = "username" }),
+            _                            => StatusCode(500)
+        };
     }
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginRequest request)
@@ -35,10 +39,11 @@ public class AuthController : ControllerBase
         var result = await _authService.LoginAsync(request);
         return result.Status switch
         {
-            LoginStatus.Success => Ok(result.Response),
-            LoginStatus.Banned => StatusCode(403, new { Message = "Your account has been banned." }),
-            LoginStatus.Inactive => StatusCode(403, new { Message = "Your account is inactive." }),
-            _ => Unauthorized(new { Message = "Invalid email or password." })
+            LoginStatus.Success            => Ok(result.Response),
+            LoginStatus.Banned             => StatusCode(403, new { Message = "Your account has been banned due to community guidelines violation.", Code = "BANNED" }),
+            LoginStatus.Inactive           => StatusCode(403, new { Message = "Your account has been deactivated. Please contact support.", Code = "INACTIVE" }),
+            LoginStatus.InvalidCredentials => Unauthorized(new { Message = "Invalid email/username or password." }),
+            _                              => StatusCode(500)
         };
     }
 

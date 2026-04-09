@@ -20,23 +20,34 @@ public class AuthService
     }
     /// <summary>
     /// Register a new user with email and password.
-    /// Returns null if email is already taken.
+    /// Returns a RegisterResult with status indicating success or failure reason.
     /// </summary>
-    public async Task<AuthResponse?> RegisterAsync(RegisterRequest request)
+    public async Task<RegisterResult> RegisterAsync(RegisterRequest request)
     {
-        bool emailExists = await _db.Users.AnyAsync(u => u.Email == request.Email);
-        if (emailExists) return null;
+        // Check email uniqueness (case-insensitive)
+        bool emailExists = await _db.Users.AnyAsync(u =>
+            u.Email.ToLower() == request.Email.ToLower().Trim());
+        if (emailExists) return new RegisterResult(null, RegisterStatus.EmailTaken);
+
+        // Check username uniqueness (case-insensitive)
+        bool usernameExists = await _db.Users.AnyAsync(u =>
+            u.Username.ToLower() == request.Username.ToLower().Trim());
+        if (usernameExists) return new RegisterResult(null, RegisterStatus.UsernameTaken);
+
         var user = new User
         {
-            Username = request.Username,
-            Email = request.Email,
+            Username = request.Username.Trim(),
+            Email = request.Email.Trim(),
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
             Role = UserRole.User
         };
         _db.Users.Add(user);
         await _db.SaveChangesAsync();
+
         var token = GenerateJwt(user);
-        return new AuthResponse(token, user.Username, user.Email, user.Role.ToString(), user.AvatarUrl);
+        var response = new AuthResponse(token, user.Username, user.Email,
+            user.Role.ToString(), user.AvatarUrl);
+        return new RegisterResult(response, RegisterStatus.Success);
     }
     /// <summary>
     /// Authenticate user with email/username and password.
@@ -120,5 +131,17 @@ public enum LoginStatus
     InvalidCredentials,
     Banned,
     Inactive
+}
+
+/// <summary>
+/// Result of a registration attempt with a discriminated status.
+/// </summary>
+public record RegisterResult(AuthResponse? Response, RegisterStatus Status);
+
+public enum RegisterStatus
+{
+    Success,
+    EmailTaken,
+    UsernameTaken
 }
 
