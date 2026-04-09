@@ -2,7 +2,8 @@
 
 public record AdminPhotoResponse(
     Guid Id,
-    string ThumbnailUrl,
+    string Url,           // full image — "/uploads/" + FileName
+    string ThumbnailUrl,  // thumbnail — "/uploads/" + ThumbnailName
     string? Description,
     DateTime? TakenAt,
     string? Address,

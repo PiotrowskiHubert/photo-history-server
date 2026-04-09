@@ -50,7 +50,8 @@ public class AdminUserService
             .OrderByDescending(p => p.UploadedAt)
             .Select(p => new AdminPhotoResponse(
                 p.Id,
-                "/uploads/" + p.ThumbnailName,
+                "/uploads/" + p.FileName,       // Url — full image
+                "/uploads/" + p.ThumbnailName,  // ThumbnailUrl — thumbnail
                 p.Description,
                 p.TakenAt,
                 p.Address,
