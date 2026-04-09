@@ -44,7 +44,11 @@ public class AuthService
     /// </summary>
     public async Task<AuthResponse?> LoginAsync(LoginRequest request)
     {
-        var user = await _db.Users.FirstOrDefaultAsync(u => u.Email == request.Email);
+        // Allow login with either email or username (case-insensitive)
+        var identifier = request.EmailOrUsername.Trim().ToLower();
+        var user = await _db.Users.FirstOrDefaultAsync(u =>
+            u.Email.ToLower() == identifier ||
+            u.Username.ToLower() == identifier);
         if (user is null || user.PasswordHash is null) return null;
         bool valid = BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash);
         if (!valid) return null;
