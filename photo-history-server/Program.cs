@@ -58,6 +58,7 @@ builder.Services.AddCors(options =>
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<SystemRegistrationService>();
 builder.Services.AddScoped<AdminRegistrationService>();
+builder.Services.AddScoped<AdminUserService>();
 builder.Services.AddScoped<PhotoService>();
 
 var app = builder.Build();
