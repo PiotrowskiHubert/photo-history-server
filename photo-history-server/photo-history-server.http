@@ -1,6 +1,0 @@
-@photo_history_server_HostAddress = http://localhost:5202
-
-GET {{photo_history_server_HostAddress}}/weatherforecast/
-Accept: application/json
-
-###

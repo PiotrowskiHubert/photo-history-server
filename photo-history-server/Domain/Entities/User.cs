@@ -13,5 +13,7 @@ public class User
     public string? AvatarUrl { get; set; }
     public UserRole Role { get; set; } = UserRole.User;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime? LastLoginAt { get; set; }
+    public DateTime? LastLogoutAt { get; set; }
 }
 

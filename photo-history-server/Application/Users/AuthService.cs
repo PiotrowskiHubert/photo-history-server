@@ -52,8 +52,26 @@ public class AuthService
         if (user is null || user.PasswordHash is null) return null;
         bool valid = BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash);
         if (!valid) return null;
+
+        // Record last login time
+        user.LastLoginAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
         var token = GenerateJwt(user);
         return new AuthResponse(token, user.Username, user.Email, user.Role.ToString(), user.AvatarUrl);
+    }
+
+    /// <summary>
+    /// Records the logout time for the given user.
+    /// Returns false if user not found.
+    /// </summary>
+    public async Task<bool> LogoutAsync(Guid userId)
+    {
+        var user = await _db.Users.FindAsync(userId);
+        if (user is null) return false;
+        user.LastLogoutAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+        return true;
     }
     /// <summary>
     /// Generate a JWT token for the given user. Public so other services can reuse it.
