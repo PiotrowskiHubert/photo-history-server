@@ -25,5 +25,15 @@ public class AdminController : ControllerBase
         var users = await _adminUserService.GetAllUsersAsync();
         return Ok(users);
     }
-}
 
+    /// <summary>
+    /// Get all photos from all users, sorted by upload date descending.
+    /// Accessible by Admin and System roles only.
+    /// </summary>
+    [HttpGet("photos")]
+    public async Task<IActionResult> GetPhotos()
+    {
+        var photos = await _adminUserService.GetAllPhotosAsync();
+        return Ok(photos);
+    }
+}

@@ -33,5 +33,24 @@ public class AdminUserService
                 u.LastLogoutAt))
             .ToListAsync();
     }
-}
 
+    /// <summary>
+    /// Returns all photos from all users sorted by UploadedAt descending.
+    /// </summary>
+    public async Task<List<AdminPhotoResponse>> GetAllPhotosAsync()
+    {
+        return await _db.Photos
+            .Include(p => p.User)
+            .OrderByDescending(p => p.UploadedAt)
+            .Select(p => new AdminPhotoResponse(
+                p.Id,
+                "/uploads/" + p.ThumbnailName,
+                p.Description,
+                p.TakenAt,
+                p.Address,
+                p.UploadedAt,
+                p.User.Username,
+                p.UserId))
+            .ToListAsync();
+    }
+}
