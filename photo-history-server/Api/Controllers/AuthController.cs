@@ -21,6 +21,7 @@ public class AuthController : ControllerBase
         _systemRegistrationService = systemRegistrationService;
         _adminRegistrationService = adminRegistrationService;
     }
+    [AllowAnonymous]
     [HttpPost("register")]
     public async Task<IActionResult> Register([FromBody] RegisterRequest request)
     {
@@ -33,6 +34,7 @@ public class AuthController : ControllerBase
             _                            => StatusCode(500)
         };
     }
+    [AllowAnonymous]
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginRequest request)
     {

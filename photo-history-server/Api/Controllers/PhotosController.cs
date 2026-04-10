@@ -9,6 +9,7 @@ namespace photo_history_server.Api.Controllers;
 
 [ApiController]
 [Route("api/photos")]
+[Authorize]
 public class PhotosController : ControllerBase
 {
     private readonly PhotoService _photoService;
@@ -22,7 +23,6 @@ public class PhotosController : ControllerBase
     /// Upload a photo with metadata. Requires authentication.
     /// </summary>
     [HttpPost("upload")]
-    [Authorize]
     [Consumes("multipart/form-data")]
     public async Task<IActionResult> Upload([FromForm] UploadPhotoRequest request)
     {
@@ -151,7 +151,6 @@ public class PhotosController : ControllerBase
     /// Get all photos uploaded by the authenticated user, sorted by upload date descending.
     /// </summary>
     [HttpGet("my")]
-    [Authorize]
     public async Task<IActionResult> GetMy()
     {
         var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -166,7 +165,6 @@ public class PhotosController : ControllerBase
     /// Update photo metadata (description and/or takenAt). Only the owner can update.
     /// </summary>
     [HttpPatch("{id:guid}")]
-    [Authorize]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdatePhotoRequest request)
     {
         var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -181,7 +179,6 @@ public class PhotosController : ControllerBase
     /// Replace the photo file and regenerate thumbnail. Only the owner can replace.
     /// </summary>
     [HttpPut("{id:guid}/image")]
-    [Authorize]
     [Consumes("multipart/form-data")]
     public async Task<IActionResult> ReplaceImage(Guid id, IFormFile file)
     {
@@ -202,7 +199,6 @@ public class PhotosController : ControllerBase
     /// Delete a photo and its thumbnail from disk and DB. Only the owner can delete.
     /// </summary>
     [HttpDelete("{id:guid}")]
-    [Authorize]
     public async Task<IActionResult> Delete(Guid id)
     {
         var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);

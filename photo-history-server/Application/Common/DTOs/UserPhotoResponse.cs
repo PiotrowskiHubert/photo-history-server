@@ -10,5 +10,6 @@ public record UserPhotoResponse(
     DateTime? TakenAt,
     string? Address,
     DateTime UploadedAt,
-    IReadOnlyList<string> Tags);
+    IReadOnlyList<string> Tags,
+    DateTime? ReviewedAt);
 

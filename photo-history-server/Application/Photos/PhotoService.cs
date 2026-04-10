@@ -192,7 +192,8 @@ public class PhotoService
                 p.TakenAt,
                 p.Address,
                 p.UploadedAt,
-                p.PhotoTags.Select(pt => pt.Tag.Name).ToList()))
+                p.PhotoTags.Select(pt => pt.Tag.Name).ToList(),
+                p.ReviewedAt))
             .ToListAsync();
     }
 
