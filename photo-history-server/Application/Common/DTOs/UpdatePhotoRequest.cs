@@ -5,5 +5,6 @@
 /// </summary>
 public record UpdatePhotoRequest(
     string? Description,
-    string? TakenAt);   // ISO 8601 string, nullable
+    string? TakenAt,
+    string? Tags);   // comma-separated tag names, nullable
 

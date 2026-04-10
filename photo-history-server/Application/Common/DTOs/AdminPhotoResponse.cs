@@ -11,5 +11,6 @@ public record AdminPhotoResponse(
     string UploaderUsername,
     Guid UserId,
     DateTime? ReviewedAt,
-    Guid? ReviewedBy);
+    Guid? ReviewedBy,
+    IReadOnlyList<string> Tags);
 

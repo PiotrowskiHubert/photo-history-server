@@ -22,5 +22,7 @@ public class Photo
 
     public Guid UserId { get; set; }
     public User User { get; set; } = null!;
+
+    public ICollection<PhotoTag> PhotoTags { get; set; } = new List<PhotoTag>();
 }
 

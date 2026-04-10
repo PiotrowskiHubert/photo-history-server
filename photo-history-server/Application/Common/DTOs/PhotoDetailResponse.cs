@@ -10,5 +10,6 @@ public record PhotoDetailResponse(
     DateTime? TakenAt,
     string? Address,
     string UploaderUsername,
-    Guid UserId);
+    Guid UserId,
+    IReadOnlyList<string> Tags);
 

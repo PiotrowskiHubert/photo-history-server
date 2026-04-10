@@ -63,6 +63,35 @@ builder.Services.AddScoped<PhotoService>();
 
 var app = builder.Build();
 
+// Automatyczna inicjalizacja schematu DB przy starcie — tylko migracje przyrostowe.
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    var logger = services.GetRequiredService<ILogger<Program>>();
+    var db = services.GetRequiredService<AppDbContext>();
+
+    try
+    {
+        var pending = (await db.Database.GetPendingMigrationsAsync()).ToList();
+        if (pending.Count > 0)
+        {
+            logger.LogInformation("Applying {Count} pending migration(s): {Migrations}",
+                pending.Count, string.Join(", ", pending));
+            await db.Database.MigrateAsync();
+            logger.LogInformation("EF Core migrations applied successfully.");
+        }
+        else
+        {
+            logger.LogInformation("Database is up to date — no pending migrations.");
+        }
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Database migration failed during startup.");
+        throw;
+    }
+}
+
 // ---------- Middleware pipeline ----------
 
 if (app.Environment.IsDevelopment())

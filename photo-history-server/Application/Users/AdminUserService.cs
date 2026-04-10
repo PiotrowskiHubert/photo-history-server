@@ -46,6 +46,7 @@ public class AdminUserService
     {
         return await _db.Photos
             .Include(p => p.User)
+            .Include(p => p.PhotoTags).ThenInclude(pt => pt.Tag)
             .Where(p => p.ReviewedAt == null)
             .OrderByDescending(p => p.UploadedAt)
             .Select(p => new AdminPhotoResponse(
@@ -59,7 +60,8 @@ public class AdminUserService
                 p.User.Username,
                 p.UserId,
                 p.ReviewedAt,
-                p.ReviewedBy))
+                p.ReviewedBy,
+                p.PhotoTags.Select(pt => pt.Tag.Name).ToList()))
             .ToListAsync();
     }
 

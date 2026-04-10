@@ -9,6 +9,8 @@ public class AppDbContext : DbContext
 
     public DbSet<User> Users => Set<User>();
     public DbSet<Photo> Photos => Set<Photo>();
+    public DbSet<Tag> Tags => Set<Tag>();
+    public DbSet<PhotoTag> PhotoTags => Set<PhotoTag>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

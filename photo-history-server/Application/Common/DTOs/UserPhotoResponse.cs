@@ -9,5 +9,6 @@ public record UserPhotoResponse(
     string? Description,
     DateTime? TakenAt,
     string? Address,
-    DateTime UploadedAt);
+    DateTime UploadedAt,
+    IReadOnlyList<string> Tags);
 

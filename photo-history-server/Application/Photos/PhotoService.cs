@@ -72,6 +72,30 @@ public class PhotoService
         };
 
         _db.Photos.Add(photo);
+
+        // Handle tags
+        if (!string.IsNullOrWhiteSpace(request.Tags))
+        {
+            var tagNames = request.Tags.Split(',')
+                .Select(t => t.Trim())
+                .Where(t => t.Length > 0)
+                .ToList();
+
+            foreach (var tagName in tagNames)
+            {
+                var tag = await _db.Tags
+                    .FirstOrDefaultAsync(t => t.Name.ToLower() == tagName.ToLower());
+
+                if (tag is null)
+                {
+                    tag = new Tag { Name = tagName };
+                    _db.Tags.Add(tag);
+                }
+
+                _db.PhotoTags.Add(new PhotoTag { Photo = photo, Tag = tag });
+            }
+        }
+
         await _db.SaveChangesAsync();
 
         return new PhotoResponse(
@@ -93,7 +117,8 @@ public class PhotoService
     /// </summary>
     public async Task<List<PhotoMarkerResponse>> GetInBoundsAsync(
         double minLat, double maxLat, double minLng, double maxLng,
-        int? fromYear, int? toYear)
+        int? fromYear, int? toYear,
+        IEnumerable<string>? tags = null)
     {
         var query = _db.Photos
             .Where(p =>
@@ -105,6 +130,14 @@ public class PhotoService
 
         if (toYear.HasValue)
             query = query.Where(p => p.TakenAt == null || p.TakenAt.Value.Year <= toYear);
+
+        var tagList = tags?.ToList();
+        if (tagList is { Count: > 0 })
+        {
+            var lowerTags = tagList.Select(t => t.ToLower()).ToList();
+            query = query.Where(p =>
+                p.PhotoTags.Any(pt => lowerTags.Contains(pt.Tag.Name.ToLower())));
+        }
 
         return await query
             .OrderByDescending(p => p.UploadedAt)
@@ -125,9 +158,12 @@ public class PhotoService
     {
         var photo = await _db.Photos
             .Include(p => p.User)
+            .Include(p => p.PhotoTags).ThenInclude(pt => pt.Tag)
             .FirstOrDefaultAsync(p => p.Id == id);
 
         if (photo is null) return null;
+
+        var tagNames = photo.PhotoTags.Select(pt => pt.Tag.Name).ToList();
 
         return new PhotoDetailResponse(
             photo.Id,
@@ -136,7 +172,8 @@ public class PhotoService
             photo.TakenAt,
             photo.Address,
             photo.User.Username,
-            photo.UserId);
+            photo.UserId,
+            tagNames);
     }
 
     /// <summary>
@@ -146,6 +183,7 @@ public class PhotoService
     {
         return await _db.Photos
             .Where(p => p.UserId == userId)
+            .Include(p => p.PhotoTags).ThenInclude(pt => pt.Tag)
             .OrderByDescending(p => p.UploadedAt)
             .Select(p => new UserPhotoResponse(
                 p.Id,
@@ -153,7 +191,8 @@ public class PhotoService
                 p.Description,
                 p.TakenAt,
                 p.Address,
-                p.UploadedAt))
+                p.UploadedAt,
+                p.PhotoTags.Select(pt => pt.Tag.Name).ToList()))
             .ToListAsync();
     }
 
@@ -162,7 +201,9 @@ public class PhotoService
     /// </summary>
     public async Task<bool> UpdateAsync(Guid id, Guid userId, UpdatePhotoRequest request)
     {
-        var photo = await _db.Photos.FirstOrDefaultAsync(p => p.Id == id && p.UserId == userId);
+        var photo = await _db.Photos
+            .Include(p => p.PhotoTags)
+            .FirstOrDefaultAsync(p => p.Id == id && p.UserId == userId);
         if (photo is null) return false;
 
         if (request.Description is not null)
@@ -174,6 +215,34 @@ public class PhotoService
                 photo.TakenAt = dt;
             else
                 photo.TakenAt = null;
+        }
+
+        // Handle tags — null means "don't touch", non-null (even empty) means "replace"
+        if (request.Tags is not null)
+        {
+            _db.PhotoTags.RemoveRange(photo.PhotoTags);
+
+            if (!string.IsNullOrWhiteSpace(request.Tags))
+            {
+                var tagNames = request.Tags.Split(',')
+                    .Select(t => t.Trim())
+                    .Where(t => t.Length > 0)
+                    .ToList();
+
+                foreach (var tagName in tagNames)
+                {
+                    var tag = await _db.Tags
+                        .FirstOrDefaultAsync(t => t.Name.ToLower() == tagName.ToLower());
+
+                    if (tag is null)
+                    {
+                        tag = new Tag { Name = tagName };
+                        _db.Tags.Add(tag);
+                    }
+
+                    _db.PhotoTags.Add(new PhotoTag { PhotoId = photo.Id, Tag = tag });
+                }
+            }
         }
 
         await _db.SaveChangesAsync();
@@ -243,3 +312,4 @@ public class PhotoService
         return true;
     }
 }
+

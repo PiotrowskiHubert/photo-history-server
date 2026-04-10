@@ -6,6 +6,7 @@ public record ParsedUploadPhotoRequest(
     DateTime? TakenAt,
     double Latitude,
     double Longitude,
-    string? Address
+    string? Address,
+    string? Tags
 );
 

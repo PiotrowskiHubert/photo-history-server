@@ -70,7 +70,7 @@ public class PhotosController : ControllerBase
 
         var parsed = new ParsedUploadPhotoRequest(
             request.File, request.Description, takenAt,
-            latitude, longitude, request.Address);
+            latitude, longitude, request.Address, request.Tags);
 
         var result = await _photoService.UploadAsync(parsed, userId);
         return Created($"/uploads/{result.FileName}", result);
@@ -87,7 +87,8 @@ public class PhotosController : ControllerBase
         [FromQuery] string minLng,
         [FromQuery] string maxLng,
         [FromQuery] string? fromYear,
-        [FromQuery] string? toYear)
+        [FromQuery] string? toYear,
+        [FromQuery] string? tags)
     {
         // Parse all four bounds using InvariantCulture
         if (!double.TryParse(minLat, NumberStyles.Any, CultureInfo.InvariantCulture, out var parsedMinLat) ||
@@ -116,9 +117,20 @@ public class PhotosController : ControllerBase
             parsedToYear = ty;
         }
 
+        // Parse optional tags filter
+        List<string>? parsedTags = null;
+        if (!string.IsNullOrWhiteSpace(tags))
+        {
+            parsedTags = tags.Split(',')
+                .Select(t => t.Trim())
+                .Where(t => t.Length > 0)
+                .ToList();
+            if (parsedTags.Count == 0) parsedTags = null;
+        }
+
         var photos = await _photoService.GetInBoundsAsync(
             parsedMinLat, parsedMaxLat, parsedMinLng, parsedMaxLng,
-            parsedFromYear, parsedToYear);
+            parsedFromYear, parsedToYear, parsedTags);
         return Ok(photos);
     }
 

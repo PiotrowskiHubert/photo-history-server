@@ -12,5 +12,6 @@ public class UploadPhotoRequest
     public string Latitude { get; set; } = "0";
     public string Longitude { get; set; } = "0";
     public string? Address { get; set; }
+    public string? Tags { get; set; }
 }
 
